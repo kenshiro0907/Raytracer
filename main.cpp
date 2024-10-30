@@ -35,29 +35,47 @@ Color ray_color(const Ray& r) {
     return startValue * (1.0f-a) + endValue * a;
 }*/
 
-Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vector<Light>& lights, int depth) {
+
+Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Light>& lights, int depth) {
     if (depth <= 0) {
         return Color(0.0f, 0.0f, 0.0f); // Retourne noir si la profondeur maximale est atteinte
     }
 
     std::optional<vec3> closestHitPoint = std::nullopt;
     const Sphere* hitSphere = nullptr;
+    const Plane* hitPlane = nullptr;
     vec3 normalAtHitPoint;
     vec3 hitPoint;
+    Color hitColor;
 
-    // Trouver la sphère la plus proche
+    // Vérifie les intersections avec les sphères
     for (const auto& sphere : spheres) {
         std::optional<vec3> hit = r.intersectSphere(sphere);
         if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
             closestHitPoint = hit;
             hitSphere = &sphere;
+            hitPlane = nullptr; // Pas de plan touché
             hitPoint = *hit;
-            normalAtHitPoint = (hitPoint - sphere.center).normalize(); // Calcule la normale
+            normalAtHitPoint = (hitPoint - sphere.center).normalize();
+            hitColor = sphere.color;
         }
     }
 
-    // Pas de hit, retour à la couleur de fond
-    if (!hitSphere) {
+    // Vérifie les intersections avec les plans
+    for (const auto& plane : planes) {
+        std::optional<vec3> hit = r.intersectPlane(plane);
+        if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
+            closestHitPoint = hit;
+            hitSphere = nullptr; // Pas de sphère touchée
+            hitPlane = &plane;
+            hitPoint = *hit;
+            normalAtHitPoint = plane.normal;
+            hitColor = plane.color;
+        }
+    }
+
+    // Pas d'intersection, on retourne la couleur de fond
+    if (!hitSphere && !hitPlane) {
         return Color(0.5f, 0.7f, 1.0f); // Couleur du fond
     }
 
@@ -69,9 +87,11 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
         float lightDistance = (light.position - hitPoint).length();
         float diffuseStrength = std::max(0.0f, normalAtHitPoint.dot(lightDir));
 
-        // Vérifier l'ombre
+        // Vérifie l'ombre
         Ray shadowRay(hitPoint + normalAtHitPoint * 0.001f, lightDir);
         bool inShadow = false;
+
+        // Vérifie les ombres pour les sphères
         for (const auto& sphere : spheres) {
             if (&sphere != hitSphere && shadowRay.intersectSphere(sphere) && (shadowRay.intersectSphere(sphere)->length() < lightDistance)) {
                 inShadow = true;
@@ -79,15 +99,23 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
             }
         }
 
+        // Vérifie les ombres pour les plans
+        for (const auto& plane : planes) {
+            if (&plane != hitPlane && shadowRay.intersectPlane(plane) && (shadowRay.intersectPlane(plane)->length() < lightDistance)) {
+                inShadow = true;
+                break;
+            }
+        }
+
         if (!inShadow) {
-            pixelColor = pixelColor + (hitSphere->color * diffuseStrength * light.intensity);
+            pixelColor = pixelColor + (hitColor * diffuseStrength * light.intensity);
         }
     }
 
     // Gestion des réflexions
     vec3 reflectionDir = r.direction - normalAtHitPoint * 2.0f * r.direction.dot(normalAtHitPoint);
     Ray reflectionRay(hitPoint + normalAtHitPoint * 0.001f, reflectionDir);
-    Color reflectedColor = ray_color(reflectionRay, spheres, lights, depth - 1);
+    Color reflectedColor = ray_color(reflectionRay, spheres, planes, lights, depth - 1);
     pixelColor = pixelColor + reflectedColor * 0.5f; // Contribue à la couleur finale
 
     return pixelColor;
@@ -100,25 +128,31 @@ int main() {
 
     // Création des sphères
     std::vector<Sphere> spheres = {
-        Sphere(1.0f, vec3(0.0f, 0.0f, -5.0f), Color(1.0f, 0.0f, 0.0f)), // Rouge
-        Sphere(1.0f, vec3(2.0f, 0.0f, -5.0f), Color(0.0f, 1.0f, 0.0f)), // Vert
-        Sphere(1.0f, vec3(-2.0f, 0.0f, -5.0f), Color(0.0f, 0.0f, 1.0f)) // Bleu
+        Sphere(1.0f, vec3(0.0f, 1.5f, -4.0f), Color(1.0f, 0.0f, 0.0f)), // Sphère rouge, légèrement en bas
+        Sphere(1.0f, vec3(2.0f, 1.0f, -4.0f), Color(0.0f, 1.0f, 0.0f)), // Sphère verte, légèrement en haut
+        Sphere(1.0f, vec3(-2.0f, 1.0f, -4.0f), Color(0.0f, 0.0f, 1.0f)) // Sphère bleue, centrée
+    };
+
+    // Création des plans
+    std::vector<Plane> planes = {
+        Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.50f, 0.0f), Color(0.8f, 0.8f, 0.8f)), // Sol gris, sous les sphères
     };
 
     // Création des lumières
     std::vector<Light> lights = {
-        Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
-        Light(vec3(-5.0f, 5.0f, 0.0f), 0.5f) // Lumière supérieure gauche
+        //Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
+        Light(vec3(-5.0f, 8.0f, 4.0f), 0.5f), // Lumière supérieure gauche
+        //Light(vec3(-5.0f, -5.0f, 0.0f), 2.0f) // Lumière inférieure gauche
     };
 
-    const int maxDepth = 5; // Limite de profondeur pour les réflexions
+    const int maxDepth = 10; // Limite de profondeur pour les réflexions
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             float u = (2.0f * x) / width - 1.0f;
             float v = 1.0f - (2.0f * y) / height;
             Ray ray(vec3(0, 0, 0), vec3(u, v, -1).normalize());
-            Color pixelColor = ray_color(ray, spheres, lights, maxDepth);
+            Color pixelColor = ray_color(ray, spheres, planes, lights, maxDepth);
             image.SetPixel(x, y, pixelColor);
         }
     }
@@ -128,3 +162,4 @@ int main() {
 
     return 0;
 }
+
