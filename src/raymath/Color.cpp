@@ -33,11 +33,19 @@ float Color::B()
  * Adding two colors is done by just adding the different components together :
  * (r1, g1, b1) + (r2, g2, b2) = (r1 + r2, g1 + g2, b1 + b2)
  */
-Color Color::operator+(Color const& col) {
+Color Color::operator+(Color const& col) const{
   Color c;
-  c.r = fmax(fmin(r + col.r, 1), 0);
-  c.g = fmax(fmin(g + col.g, 1), 0);
-  c.b = fmax(fmin(b + col.b, 1), 0);
+  c.r = fmax(fmin(r + col.r, 1.0f), 0.0f);
+  c.g = fmax(fmin(g + col.g, 1.0f), 0.0f);
+  c.b = fmax(fmin(b + col.b, 1.0f), 0.0f);
+  return c;
+}
+
+Color Color::operator*(float col) const {
+  Color c;
+  c.r = fmax(fmin(r * col, 1.0f), 0.0f);
+  c.g = fmax(fmin(g * col, 1.0f), 0.0f);
+  c.b = fmax(fmin(b * col, 1.0f), 0.0f);
   return c;
 }
 

@@ -2,14 +2,16 @@
 
 #include <iostream>
 #include <vector>
-#include "Vec3.hpp"
+#include "../raymath/Color.hpp"
+#include "Light.hpp"
 
 class Sphere
 {
-    private:
-        float radius;
-        vec3 center; 
     public:
-        Sphere(float radius, const vec3& center);
-        ~Sphere();  
+        float radius;
+        vec3 center;
+        Color color;
+
+        Sphere(float radius, const vec3& center, const Color& col);
+        ~Sphere();
 };
