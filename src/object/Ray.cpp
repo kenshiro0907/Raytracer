@@ -20,6 +20,18 @@ std::optional<vec3> Ray::intersectSphere(const Sphere& sphere) const {
         }
 }
 
+std::optional<vec3> Ray::intersectPlane(const Plane& plane) const {
+    float denom = direction.dot(plane.normal);
+    if (fabs(denom) > 1e-6) {
+        vec3 p0l0 = plane.position - origin;
+        float t = p0l0.dot(plane.normal) / denom;
+        if (t >= 0) {
+            return origin + direction * t;
+        }
+    }
+    return std::nullopt;
+}
+
 bool Ray::isShadowed(const vec3& point, const Light& light, const std::vector<Sphere>& spheres) const {
     vec3 lightDir = (light.position - point).normalize();
     Ray shadowRay(point, lightDir);
