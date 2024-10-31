@@ -1,7 +1,7 @@
 #include "Export.hpp"
 
-Export::Export(const std::vector<Sphere>& spheres, const Plane& plane)
-            : spheres(spheres), plane(plane) {}
+Export::Export(const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Triangle>& triangles)
+            : spheres(spheres), planes(planes), triangles(triangles) {}
 
 Export::~Export() {}
 
@@ -14,17 +14,28 @@ void Export::exportMaterials(const std::string& mtlFilename) {
 
     for (size_t i = 0; i < spheres.size(); ++i) {
         mtlFile << "newmtl material_sphere_" << i << "\n";
-        mtlFile << "Kd " << spheres[i].color.R() << " " << spheres[i].color.G() << " " << spheres[i].color.B() << "\n"; // Couleur diffuse
-        mtlFile << "Ka 0.2 0.2 0.2\n"; // Ambiante
+        mtlFile << "Kd " << spheres[i].color.R() << " " << spheres[i].color.G() << " " << spheres[i].color.B() << "\n"; // Couleur de chacune des sphères
+        mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
         mtlFile << "Ks 0.5 0.5 0.5\n"; // Spéculaire
-        mtlFile << "Ns 100.0\n\n";     // Brillance
+        mtlFile << "Ns 50.0\n\n";     // Brillance
     }
 
-    mtlFile << "newmtl material_plane\n";
-    mtlFile << "Kd 0.8 0.8 0.8\n"; // Couleur gris clair pour le plan
-    mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
-    mtlFile << "Ks 0.3 0.3 0.3\n"; // Spéculaire
-    mtlFile << "Ns 50.0\n";         // Brillance
+    for (size_t i = 0; i < planes.size(); ++i) {
+        mtlFile << "newmtl material_plane_\n";
+        mtlFile << "Kd " << planes[i].color.R() << " " << planes[i].color.G() << " " << planes[i].color.B() << "\n"; // Couleur de chacun des plans
+        mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
+        mtlFile << "Ks 0.3 0.3 0.3\n"; // Spéculaire
+        mtlFile << "Ns 10.0\n\n";         // Brillance
+    }
+
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        mtlFile << "newmtl material_triangle_\n";
+        mtlFile << "Kd " << triangles[i].color.R() << " " << triangles[i].color.G() << " " << triangles[i].color.B() << "\n"; // Couleur de chacun des triangles
+        mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
+        mtlFile << "Ks 0.5 0.5 0.5\n"; // Spéculaire
+        mtlFile << "Ns 50.0\n\n";         // Brillance
+    }
+
     mtlFile.close();
 }
 
@@ -39,7 +50,6 @@ void Export::exportToObj(const std::string& objFilename, const std::string& mtlF
     objFile << "mtllib " << mtlFilename << "\n";
     int vertexOffset = 1;
 
-    // Exportation des sphères
     for (size_t i = 0; i < spheres.size(); ++i) {
         objFile << "usemtl material_sphere_" << i << "\n";
 
@@ -80,20 +90,39 @@ void Export::exportToObj(const std::string& objFilename, const std::string& mtlF
         vertexOffset += vertices.size();
     }
 
-    // Exportation du plan
-    objFile << "usemtl material_plane\n";
-    vec3 p1 = plane.position + vec3(-10, 0, -10);
-    vec3 p2 = plane.position + vec3(10, 0, -10);
-    vec3 p3 = plane.position + vec3(10, 0, 10);
-    vec3 p4 = plane.position + vec3(-10, 0, 10);
+    for (size_t i = 0; i < planes.size(); ++i) {
+        objFile << "usemtl material_plane_\n";
+        vec3 p1 = planes[i].position + vec3(-10, 0, -10);
+        vec3 p2 = planes[i].position + vec3(10, 0, -10);
+        vec3 p3 = planes[i].position + vec3(10, 0, 10);
+        vec3 p4 = planes[i].position + vec3(-10, 0, 10);
 
-    objFile << "v " << p1.x << " " << p1.y << " " << p1.z << "\n";
-    objFile << "v " << p2.x << " " << p2.y << " " << p2.z << "\n";
-    objFile << "v " << p3.x << " " << p3.y << " " << p3.z << "\n";
-    objFile << "v " << p4.x << " " << p4.y << " " << p4.z << "\n";
+        objFile << "v " << p1.x << " " << p1.y << " " << p1.z << "\n";
+        objFile << "v " << p2.x << " " << p2.y << " " << p2.z << "\n";
+        objFile << "v " << p3.x << " " << p3.y << " " << p3.z << "\n";
+        objFile << "v " << p4.x << " " << p4.y << " " << p4.z << "\n";
 
-    objFile << "f " << vertexOffset << " " << vertexOffset + 1 << " " << vertexOffset + 2 << "\n";
-    objFile << "f " << vertexOffset << " " << vertexOffset + 2 << " " << vertexOffset + 3 << "\n";
+        objFile << "f " << vertexOffset << " " << vertexOffset + 1 << " " << vertexOffset + 2 << "\n";
+        objFile << "f " << vertexOffset << " " << vertexOffset + 2 << " " << vertexOffset + 3 << "\n";
+
+        vertexOffset += 4;
+    }
+
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        objFile << "usemtl material_triangle_" << i << "\n";
+        
+        vec3 v0 = triangles[i].v0;
+        vec3 v1 = triangles[i].v1;
+        vec3 v2 = triangles[i].v2;
+
+        objFile << "v " << v0.x << " " << v0.y << " " << v0.z << "\n";
+        objFile << "v " << v1.x << " " << v1.y << " " << v1.z << "\n";
+        objFile << "v " << v2.x << " " << v2.y << " " << v2.z << "\n";
+
+        objFile << "f " << vertexOffset << " " << vertexOffset + 1 << " " << vertexOffset + 2 << "\n";
+        
+        vertexOffset += 3;
+    }
 
     objFile.close();
     std::cout << "Exportation terminée! Fichier sauvegardé sous " << objFilename << ".\n";

@@ -32,6 +32,32 @@ std::optional<vec3> Ray::intersectPlane(const Plane& plane) const {
     return std::nullopt;
 }
 
+std::optional<vec3> Ray::intersectTriangle(const Triangle& triangle) const {
+    const float EPSILON = 0.0000001f;
+    vec3 edge1 = triangle.v1 - triangle.v0;
+    vec3 edge2 = triangle.v2 - triangle.v0;
+    vec3 h = direction.cross(edge2);
+    float a = edge1.dot(h);
+
+    if (a > -EPSILON && a < EPSILON) return std::nullopt; // Le rayon est parallèle au triangle
+
+    float f = 1.0f / a;
+    vec3 s = origin - triangle.v0;
+    float u = f * s.dot(h);
+    if (u < 0.0f || u > 1.0f) return std::nullopt;
+
+    vec3 q = s.cross(edge1);
+    float v = f * direction.dot(q);
+    if (v < 0.0f || u + v > 1.0f) return std::nullopt;
+
+    float t = f * edge2.dot(q);
+    if (t > EPSILON) {
+        return origin + direction * t; // Intersection
+    } else {
+        return std::nullopt;
+    } 
+}
+
 bool Ray::isShadowed(const vec3& point, const Light& light, const std::vector<Sphere>& spheres) const {
     vec3 lightDir = (light.position - point).normalize();
     Ray shadowRay(point, lightDir);

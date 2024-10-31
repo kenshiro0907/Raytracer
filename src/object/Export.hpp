@@ -8,9 +8,10 @@
 class Export {
     public:
         const std::vector<Sphere>& spheres;
-        const Plane& plane;
+        const std::vector<Plane>& planes;
+        const std::vector<Triangle>& triangles;
 
-        Export(const std::vector<Sphere>& spheres, const Plane& plane);
+        Export(const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Triangle>& triangles);
         ~Export();
         void exportMaterials(const std::string& mtlFilename);
         void exportToObj(const std::string& objFilename, const std::string& mtlFilename);

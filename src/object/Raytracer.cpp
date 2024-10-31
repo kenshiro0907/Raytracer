@@ -1,7 +1,7 @@
 #include "Raytracer.hpp"
 
-Raytracer::Raytracer(Ray& r, const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Light>& lights) 
-            : r(r), spheres(spheres), planes(planes), lights(lights) {}
+Raytracer::Raytracer(Ray& r, const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Light>& lights, const std::vector<Triangle>& triangles) 
+            : r(r), spheres(spheres), planes(planes), lights(lights), triangles(triangles) {}
 
 Raytracer::~Raytracer() {}
 
@@ -13,6 +13,7 @@ Color Raytracer::ray_color(int depth) {
     std::optional<vec3> closestHitPoint = std::nullopt;
     const Sphere* hitSphere = nullptr;
     const Plane* hitPlane = nullptr;
+    const Triangle* hitTriangle = nullptr;
     vec3 normalAtHitPoint;
     vec3 hitPoint;
     Color hitColor;
@@ -23,6 +24,7 @@ Color Raytracer::ray_color(int depth) {
             closestHitPoint = hit;
             hitSphere = &sphere;
             hitPlane = nullptr;
+            hitTriangle = nullptr;
             hitPoint = *hit;
             normalAtHitPoint = (hitPoint - sphere.center).normalize();
             hitColor = sphere.color;
@@ -34,14 +36,28 @@ Color Raytracer::ray_color(int depth) {
         if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
             closestHitPoint = hit;
             hitSphere = nullptr;
+            hitTriangle = nullptr;
             hitPlane = &plane;
             hitPoint = *hit;
             normalAtHitPoint = plane.normal;
             hitColor = plane.color;
         }
     }
+    
+    for (const auto& triangle : triangles) {
+        std::optional<vec3> hit = r.intersectTriangle(triangle);
+        if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
+            closestHitPoint = hit;
+            hitSphere = nullptr;
+            hitPlane = nullptr;
+            hitTriangle = &triangle;
+            hitPoint = *hit;
+            normalAtHitPoint = (triangle.v1 - triangle.v0).cross(triangle.v2 - triangle.v0).normalize();
+            hitColor = triangle.color;
+        }
+    }
 
-    if (!hitSphere && !hitPlane) {
+    if (!hitSphere && !hitPlane && !hitTriangle) {
         return Color(0.5f, 0.7f, 1.0f);
     }
 
@@ -69,7 +85,14 @@ Color Raytracer::ray_color(int depth) {
             }
         }
 
-        if (!inShadow) {
+        for (const auto& triangle : triangles) {
+            if (&triangle != hitTriangle && shadowRay.intersectTriangle(triangle) && (shadowRay.intersectTriangle(triangle)->length() < lightDistance)) {
+                inShadow = true;
+                break;
+            }
+        }
+
+          if (!inShadow) {
             pixelColor = pixelColor + (hitColor * diffuseStrength * light.intensity);
         }
     }

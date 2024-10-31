@@ -19,13 +19,17 @@ int main() {
         Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.50f, 0.0f), Color(0.8f, 0.8f, 0.8f)), // Sol gris, sous les sphères
     };
 
+    std::vector<Triangle> triangles = {
+        Triangle(vec3(-1.0f, 0.0f, -1.5f), vec3(1.0f, 0.0f, -1.5f), vec3(0.0f, 1.0f, -1.5f), Color(1.0f, 1.0f, 0.0f))
+    };
+
     std::vector<Light> lights = {
         //Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
         Light(vec3(-5.0f, 5.0f, 4.0f), 1.0f), // Lumière supérieure gauche
         //Light(vec3(-5.0f, -5.0f, 0.0f), 2.0f) // Lumière inférieure gauche
     };
 
-    Export to_export(spheres, planes.front());
+    Export to_export(spheres, planes, triangles);
 
     const int maxDepth = 5;
 
@@ -34,7 +38,7 @@ int main() {
             float u = (2.0f * x) / width - 1.0f;
             float v = 1.0f - (2.0f * y) / height;
             Ray ray(vec3(0, 0, 0), vec3(u, v, -1.0f).normalize());
-            Raytracer raytracer(ray, spheres, planes, lights);
+            Raytracer raytracer(ray, spheres, planes, lights, triangles);
             Color pixelColor = raytracer.ray_color(maxDepth);
             image.SetPixel(x, y, pixelColor);
         }
