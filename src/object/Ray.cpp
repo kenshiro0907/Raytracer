@@ -69,7 +69,3 @@ bool Ray::isShadowed(const vec3& point, const Light& light, const std::vector<Sp
     }
     return false;
 }
-
-std::optional<vec3> Ray::reflect(const vec3& normal, const vec3& incoming) const {
-    return incoming - normal * 2.0f * normal.dot(incoming);
-}
