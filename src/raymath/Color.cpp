@@ -13,21 +13,6 @@ Color::~ Color()
 {
 }
 
-float Color::R()
-{
-  return r;
-}
-
-float Color::G()
-{
-  return g;
-}
-
-float Color::B()
-{
-  return b;
-}
-
 /**
  * Implementation of the + operator :
  * Adding two colors is done by just adding the different components together :

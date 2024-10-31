@@ -13,9 +13,9 @@ public:
   Color(float r, float g, float b);
   ~ Color();
 
-  float R();
-  float G();
-  float B();
+  float R() const { return r; };
+  float G() const { return g; };
+  float B() const { return b; };
 
   Color operator+(Color const& col) const;
   Color operator*(float col) const;

@@ -1,40 +1,110 @@
 #include <iostream>
+#include <fstream>
 #include "Image.hpp"
 #include "src/object/Ray.hpp"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 using namespace std;
 
-/*bool intersectSphere(const Sphere& sphere, const Ray& r) {
-        vec3 OC = sphere.getCenter() - r.origin;
-        float dotProd = OC.dot(r.direction);
-        vec3 OP = r.direction * dotProd;
-        vec3 P = r.origin + OP;
-        vec3 CP = P - sphere.getCenter();
-        float lenCP = CP.dot(CP);
-
-        if (lenCP > sphere.getRadius() * sphere.getRadius()) {
-            return false;
-        }
-
-        float a = std::sqrt(sphere.getRadius() * sphere.getRadius() - lenCP);
-        vec3 intersectionPoint = P - (r.direction * a);
-        return true;
-}
-
-Color ray_color(const Ray& r) {
-    Sphere sphere(5.0f, vec3(0.0f, 0.0f, 0.0f));
-
-    if (intersectSphere(sphere, r)) {
-      return Color(1.0f, 0.0f, 0.0f);
+void exportMaterials(const std::vector<Sphere>& spheres, const Plane& plane, const std::string& mtlFilename) {
+    std::ofstream mtlFile(mtlFilename);
+    if (!mtlFile.is_open()) {
+        std::cerr << "Impossible d'ouvrir le fichier " << mtlFilename << " pour l'export.\n";
+        return;
     }
 
-    Color startValue(1.0f, 1.0f, 1.0f);
-    Color endValue(0.5f, 0.7f, 1.0f);
-    vec3 unit_direction = (r.direction.normalize());
-    auto a = 0.5f*(unit_direction.y + 1.0f);
-    return startValue * (1.0f-a) + endValue * a;
-}*/
+    // Matériaux pour chaque sphère
+    for (size_t i = 0; i < spheres.size(); ++i) {
+        mtlFile << "newmtl material_sphere_" << i << "\n";
+        mtlFile << "Kd " << spheres[i].color.R() << " " << spheres[i].color.G() << " " << spheres[i].color.B() << "\n"; // Couleur diffuse
+        mtlFile << "Ka 0.2 0.2 0.2\n"; // Ambiante
+        mtlFile << "Ks 0.5 0.5 0.5\n"; // Spéculaire
+        mtlFile << "Ns 100.0\n\n";     // Brillance
+    }
 
+    // Matériau pour le plan
+    mtlFile << "newmtl material_plane\n";
+    mtlFile << "Kd 0.8 0.8 0.8\n"; // Couleur gris clair pour le plan
+    mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
+    mtlFile << "Ks 0.3 0.3 0.3\n"; // Spéculaire
+    mtlFile << "Ns 50.0\n";         // Brillance
+    mtlFile.close();
+}
+
+// Fonction pour exporter la scène en .obj
+void exportToObj(const std::vector<Sphere>& spheres, const Plane& plane, const std::string& objFilename, const std::string& mtlFilename) {
+    std::ofstream objFile(objFilename);
+    if (!objFile.is_open()) {
+        std::cerr << "Impossible d'ouvrir le fichier " << objFilename << " pour l'export.\n";
+        return;
+    }
+
+    // Lien vers le fichier .mtl
+    objFile << "mtllib " << mtlFilename << "\n";
+    int vertexOffset = 1;
+
+    // Exportation des sphères
+    for (size_t i = 0; i < spheres.size(); ++i) {
+        objFile << "usemtl material_sphere_" << i << "\n"; // Utilisation du matériau
+
+        const int latitudeBands = 20;
+        const int longitudeBands = 20;
+        std::vector<vec3> vertices;
+
+        for (int latNumber = 0; latNumber <= latitudeBands; ++latNumber) {
+            float theta = latNumber * M_PI / latitudeBands;
+            float sinTheta = sin(theta);
+            float cosTheta = cos(theta);
+
+            for (int longNumber = 0; longNumber <= longitudeBands; ++longNumber) {
+                float phi = longNumber * 2 * M_PI / longitudeBands;
+                float sinPhi = sin(phi);
+                float cosPhi = cos(phi);
+
+                vec3 vertex(
+                    spheres[i].center.x + spheres[i].radius * cosPhi * sinTheta,
+                    spheres[i].center.y + spheres[i].radius * cosTheta,
+                    spheres[i].center.z + spheres[i].radius * sinPhi * sinTheta
+                );
+                vertices.push_back(vertex);
+                objFile << "v " << vertex.x << " " << vertex.y << " " << vertex.z << "\n";
+            }
+        }
+
+        for (int latNumber = 0; latNumber < latitudeBands; ++latNumber) {
+            for (int longNumber = 0; longNumber < longitudeBands; ++longNumber) {
+                int first = (latNumber * (longitudeBands + 1)) + longNumber + vertexOffset;
+                int second = first + longitudeBands + 1;
+
+                objFile << "f " << first << " " << second << " " << first + 1 << "\n";
+                objFile << "f " << second << " " << second + 1 << " " << first + 1 << "\n";
+            }
+        }
+
+        vertexOffset += vertices.size();
+    }
+
+    // Exportation du plan
+    objFile << "usemtl material_plane\n"; // Utilisation du matériau du plan
+    vec3 p1 = plane.position + vec3(-10, 0, -10);
+    vec3 p2 = plane.position + vec3(10, 0, -10);
+    vec3 p3 = plane.position + vec3(10, 0, 10);
+    vec3 p4 = plane.position + vec3(-10, 0, 10);
+
+    objFile << "v " << p1.x << " " << p1.y << " " << p1.z << "\n";
+    objFile << "v " << p2.x << " " << p2.y << " " << p2.z << "\n";
+    objFile << "v " << p3.x << " " << p3.y << " " << p3.z << "\n";
+    objFile << "v " << p4.x << " " << p4.y << " " << p4.z << "\n";
+
+    objFile << "f " << vertexOffset << " " << vertexOffset + 1 << " " << vertexOffset + 2 << "\n";
+    objFile << "f " << vertexOffset << " " << vertexOffset + 2 << " " << vertexOffset + 3 << "\n";
+
+    objFile.close();
+    std::cout << "Exportation terminée! Fichier sauvegardé sous " << objFilename << ".\n";
+}
 
 Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Light>& lights, int depth) {
     if (depth <= 0) {
@@ -141,23 +211,25 @@ int main() {
     // Création des lumières
     std::vector<Light> lights = {
         //Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
-        Light(vec3(-5.0f, 8.0f, 4.0f), 0.5f), // Lumière supérieure gauche
+        Light(vec3(-5.0f, 5.0f, 4.0f), 1.0f), // Lumière supérieure gauche
         //Light(vec3(-5.0f, -5.0f, 0.0f), 2.0f) // Lumière inférieure gauche
     };
 
-    const int maxDepth = 10; // Limite de profondeur pour les réflexions
+    const int maxDepth = 5; // Limite de profondeur pour les réflexions
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             float u = (2.0f * x) / width - 1.0f;
             float v = 1.0f - (2.0f * y) / height;
-            Ray ray(vec3(0, 0, 0), vec3(u, v, -1).normalize());
+            Ray ray(vec3(0, 0, 0), vec3(u, v, -1.0f).normalize());
             Color pixelColor = ray_color(ray, spheres, planes, lights, maxDepth);
             image.SetPixel(x, y, pixelColor);
         }
     }
 
     image.WriteFile("output.png");
+    exportMaterials(spheres, planes.front(), "scene.mtl");
+    exportToObj(spheres, planes.front(), "scene.obj", "scene.mtl");
     std::cout << "Raytracing terminé! Image sauvegardée sous 'output.png'.\n";
 
     return 0;
