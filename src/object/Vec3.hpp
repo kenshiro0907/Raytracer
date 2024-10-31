@@ -27,6 +27,10 @@ struct vec3 {
         return vec3(x * scalar, y * scalar, z * scalar);
     }
 
+    vec3 operator/(float scalar) const {
+        return vec3(x / scalar, y / scalar, z / scalar);
+    }
+
     vec3 operator*(const vec3& other) const {
         return vec3(x * other.x, y * other.y, z * other.z);
     }
