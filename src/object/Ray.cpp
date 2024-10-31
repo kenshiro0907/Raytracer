@@ -38,10 +38,10 @@ bool Ray::isShadowed(const vec3& point, const Light& light, const std::vector<Sp
     
     for (const Sphere& sphere : spheres) {
         if (shadowRay.intersectSphere(sphere)) {
-            return true; // Un objet bloque la lumière
+            return true;
         }
     }
-    return false; // Pas d'objet entre le point et la lumière
+    return false;
 }
 
 std::optional<vec3> Ray::reflect(const vec3& normal, const vec3& incoming) const {
