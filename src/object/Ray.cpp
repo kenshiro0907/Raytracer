@@ -57,15 +57,3 @@ std::optional<vec3> Ray::intersectTriangle(const Triangle& triangle) const {
         return std::nullopt;
     } 
 }
-
-bool Ray::isShadowed(const vec3& point, const Light& light, const std::vector<Sphere>& spheres) const {
-    vec3 lightDir = (light.position - point).normalize();
-    Ray shadowRay(point, lightDir);
-    
-    for (const Sphere& sphere : spheres) {
-        if (shadowRay.intersectSphere(sphere)) {
-            return true;
-        }
-    }
-    return false;
-}
