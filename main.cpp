@@ -1,10 +1,57 @@
 #include <iostream>
 #include <sstream>
 #include <ctime>
+#include "src/utility/json.hpp"
 #include "Image.hpp"
 #include "src/object/Camera.hpp"
 
 using namespace std;
+using json = nlohmann::json;
+
+void loadSceneFromJson(const std::string& filename,
+                       std::vector<Sphere>& spheres,
+                       std::vector<Triangle>& triangles,
+                       std::vector<Plane>& planes,
+                       std::vector<Light>& lights) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Erreur : impossible d'ouvrir le fichier " << filename << "\n";
+        return;
+    }
+
+    json sceneConfig;
+    file >> sceneConfig;
+
+    for (const auto& sphereData : sceneConfig["spheres"]) {
+        float radius = sphereData["radius"];
+        vec3 position(sphereData["position"][0], sphereData["position"][1], sphereData["position"][2]);
+        Color color(sphereData["color"][0], sphereData["color"][1], sphereData["color"][2]);
+        spheres.emplace_back(radius, position, color);
+    }
+
+    for (const auto& triangleData : sceneConfig["triangles"]) {
+        vec3 v1(triangleData["vertices"][0][0], triangleData["vertices"][0][1], triangleData["vertices"][0][2]);
+        vec3 v2(triangleData["vertices"][1][0], triangleData["vertices"][1][1], triangleData["vertices"][1][2]);
+        vec3 v3(triangleData["vertices"][2][0], triangleData["vertices"][2][1], triangleData["vertices"][2][2]);
+        Color color(triangleData["color"][0], triangleData["color"][1], triangleData["color"][2]);
+        triangles.emplace_back(v1, v2, v3, color);
+    }
+
+    for (const auto& planeData : sceneConfig["planes"]) {
+        vec3 normal(planeData["normal"][0], planeData["normal"][1], planeData["normal"][2]);
+        vec3 point(planeData["point"][0], planeData["point"][1], planeData["point"][2]);
+        Color color(planeData["color"][0], planeData["color"][1], planeData["color"][2]);
+        planes.emplace_back(normal, point, color);
+    }
+
+    for (const auto& lightData : sceneConfig["lights"]) {
+        vec3 position(lightData["position"][0], lightData["position"][1], lightData["position"][2]);
+        float intensity = lightData["intensity"];
+        lights.emplace_back(position, intensity);
+    }
+
+    file.close();
+}
 
 int main() {
     clock_t before = clock();
@@ -20,26 +67,12 @@ int main() {
     
     Camera camera(cameraPosition, cameraTarget, cameraUp, fov, aspectRatio);
 
+    std::vector<Sphere> spheres;
+    std::vector<Triangle> triangles;
+    std::vector<Plane> planes;
+    std::vector<Light> lights;
 
-    std::vector<Triangle> triangles = {
-        Triangle(vec3(-1.0f, 0.0f, -1.5f), vec3(1.0f, 0.0f, -1.5f), vec3(0.0f, 1.0f, -1.5f), Color(1.0f, 1.0f, 0.0f))
-    };
-
-    std::vector<Sphere> spheres = {
-        Sphere(1.0f, vec3(0.0f, 1.5f, -4.0f), Color(1.0f, 0.0f, 0.0f)), // Sphère rouge, légèrement en bas
-        Sphere(1.0f, vec3(2.0f, 1.0f, -4.0f), Color(0.0f, 1.0f, 0.0f)), // Sphère verte, légèrement en haut
-        Sphere(1.0f, vec3(-2.0f, 1.0f, -4.0f), Color(0.0f, 0.0f, 1.0f)) // Sphère bleue, centrée
-    };
-
-    std::vector<Plane> planes = {
-        Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.50f, 0.0f), Color(0.8f, 0.8f, 0.8f)), // Sol gris, sous les sphères
-    };
-
-    std::vector<Light> lights = {
-        //Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
-        Light(vec3(-5.0f, 5.0f, 4.0f), 1.0f), // Lumière supérieure gauche
-        //Light(vec3(-5.0f, -5.0f, 0.0f), 2.0f) // Lumière inférieure gauche
-    };
+    loadSceneFromJson("E:/Projets/Persos/C++ Projects/Raytracer/scene.json", spheres, triangles, planes, lights);
 
     Export to_export(spheres, planes, triangles);
 
