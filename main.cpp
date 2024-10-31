@@ -16,7 +16,6 @@ void exportMaterials(const std::vector<Sphere>& spheres, const Plane& plane, con
         return;
     }
 
-    // Matériaux pour chaque sphère
     for (size_t i = 0; i < spheres.size(); ++i) {
         mtlFile << "newmtl material_sphere_" << i << "\n";
         mtlFile << "Kd " << spheres[i].color.R() << " " << spheres[i].color.G() << " " << spheres[i].color.B() << "\n"; // Couleur diffuse
@@ -25,7 +24,6 @@ void exportMaterials(const std::vector<Sphere>& spheres, const Plane& plane, con
         mtlFile << "Ns 100.0\n\n";     // Brillance
     }
 
-    // Matériau pour le plan
     mtlFile << "newmtl material_plane\n";
     mtlFile << "Kd 0.8 0.8 0.8\n"; // Couleur gris clair pour le plan
     mtlFile << "Ka 0.1 0.1 0.1\n"; // Ambiante
@@ -34,7 +32,6 @@ void exportMaterials(const std::vector<Sphere>& spheres, const Plane& plane, con
     mtlFile.close();
 }
 
-// Fonction pour exporter la scène en .obj
 void exportToObj(const std::vector<Sphere>& spheres, const Plane& plane, const std::string& objFilename, const std::string& mtlFilename) {
     std::ofstream objFile(objFilename);
     if (!objFile.is_open()) {
@@ -108,7 +105,7 @@ void exportToObj(const std::vector<Sphere>& spheres, const Plane& plane, const s
 
 Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vector<Plane>& planes, const std::vector<Light>& lights, int depth) {
     if (depth <= 0) {
-        return Color(0.0f, 0.0f, 0.0f); // Retourne noir si la profondeur maximale est atteinte
+        return Color(0.0f, 0.0f, 0.0f);
     }
 
     std::optional<vec3> closestHitPoint = std::nullopt;
@@ -118,25 +115,23 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
     vec3 hitPoint;
     Color hitColor;
 
-    // Vérifie les intersections avec les sphères
     for (const auto& sphere : spheres) {
         std::optional<vec3> hit = r.intersectSphere(sphere);
         if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
             closestHitPoint = hit;
             hitSphere = &sphere;
-            hitPlane = nullptr; // Pas de plan touché
+            hitPlane = nullptr;
             hitPoint = *hit;
             normalAtHitPoint = (hitPoint - sphere.center).normalize();
             hitColor = sphere.color;
         }
     }
 
-    // Vérifie les intersections avec les plans
     for (const auto& plane : planes) {
         std::optional<vec3> hit = r.intersectPlane(plane);
         if (hit && (!closestHitPoint || (closestHitPoint && (hit->z < closestHitPoint->z)))) {
             closestHitPoint = hit;
-            hitSphere = nullptr; // Pas de sphère touchée
+            hitSphere = nullptr;
             hitPlane = &plane;
             hitPoint = *hit;
             normalAtHitPoint = plane.normal;
@@ -144,24 +139,20 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
         }
     }
 
-    // Pas d'intersection, on retourne la couleur de fond
     if (!hitSphere && !hitPlane) {
-        return Color(0.5f, 0.7f, 1.0f); // Couleur du fond
+        return Color(0.5f, 0.7f, 1.0f);
     }
 
-    Color pixelColor = Color(0.0f, 0.0f, 0.0f); // Couleur initiale
+    Color pixelColor = Color(0.0f, 0.0f, 0.0f);
 
-    // Calcul de l'ombrage
     for (const auto& light : lights) {
         vec3 lightDir = (light.position - hitPoint).normalize();
         float lightDistance = (light.position - hitPoint).length();
         float diffuseStrength = std::max(0.0f, normalAtHitPoint.dot(lightDir));
 
-        // Vérifie l'ombre
         Ray shadowRay(hitPoint + normalAtHitPoint * 0.001f, lightDir);
         bool inShadow = false;
 
-        // Vérifie les ombres pour les sphères
         for (const auto& sphere : spheres) {
             if (&sphere != hitSphere && shadowRay.intersectSphere(sphere) && (shadowRay.intersectSphere(sphere)->length() < lightDistance)) {
                 inShadow = true;
@@ -169,7 +160,6 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
             }
         }
 
-        // Vérifie les ombres pour les plans
         for (const auto& plane : planes) {
             if (&plane != hitPlane && shadowRay.intersectPlane(plane) && (shadowRay.intersectPlane(plane)->length() < lightDistance)) {
                 inShadow = true;
@@ -182,11 +172,10 @@ Color ray_color(const Ray& r, const std::vector<Sphere>& spheres, const std::vec
         }
     }
 
-    // Gestion des réflexions
     vec3 reflectionDir = r.direction - normalAtHitPoint * 2.0f * r.direction.dot(normalAtHitPoint);
     Ray reflectionRay(hitPoint + normalAtHitPoint * 0.001f, reflectionDir);
     Color reflectedColor = ray_color(reflectionRay, spheres, planes, lights, depth - 1);
-    pixelColor = pixelColor + reflectedColor * 0.5f; // Contribue à la couleur finale
+    pixelColor = pixelColor + reflectedColor * 0.5f;
 
     return pixelColor;
 }
@@ -196,26 +185,23 @@ int main() {
     const int height = 600;
     Image image(width, height, Color(0.0f, 0.0f, 0.0f));
 
-    // Création des sphères
     std::vector<Sphere> spheres = {
         Sphere(1.0f, vec3(0.0f, 1.5f, -4.0f), Color(1.0f, 0.0f, 0.0f)), // Sphère rouge, légèrement en bas
         Sphere(1.0f, vec3(2.0f, 1.0f, -4.0f), Color(0.0f, 1.0f, 0.0f)), // Sphère verte, légèrement en haut
         Sphere(1.0f, vec3(-2.0f, 1.0f, -4.0f), Color(0.0f, 0.0f, 1.0f)) // Sphère bleue, centrée
     };
 
-    // Création des plans
     std::vector<Plane> planes = {
         Plane(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.50f, 0.0f), Color(0.8f, 0.8f, 0.8f)), // Sol gris, sous les sphères
     };
 
-    // Création des lumières
     std::vector<Light> lights = {
         //Light(vec3(5.0f, 5.0f, 0.0f), 1.0f), // Lumière supérieure droite
         Light(vec3(-5.0f, 5.0f, 4.0f), 1.0f), // Lumière supérieure gauche
         //Light(vec3(-5.0f, -5.0f, 0.0f), 2.0f) // Lumière inférieure gauche
     };
 
-    const int maxDepth = 5; // Limite de profondeur pour les réflexions
+    const int maxDepth = 5;
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -234,4 +220,3 @@ int main() {
 
     return 0;
 }
-
